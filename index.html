@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plants vs Zombies - Basic Version</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D982 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #gameContainer {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            color: white;
+        }
+
+        #sunCount {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #sunIcon {
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #FFD700, #FFA500);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        #plantSelector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+        }
+
+        .plantCard {
+            padding: 10px 15px;
+            border: 3px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .plantCard:hover:not(.disabled) {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .plantCard.selected {
+            border-color: #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+
+        .plantCard.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .peashooter { background: linear-gradient(135deg, #90EE90, #228B22); }
+        .freezeshooter { background: linear-gradient(135deg, #87CEEB, #4169E1); }
+        .snipershooter { background: linear-gradient(135deg, #FFB6C1, #DC143C); }
+        .bombshooter { background: linear-gradient(135deg, #FFA500, #FF4500); }
+        .sunflower { background: linear-gradient(135deg, #FFD700, #FF8C00); }
+        .wallnut { background: linear-gradient(135deg, #8B4513, #654321); color: white; }
+
+        #gameCanvas {
+            border: 4px solid #654321;
+            border-radius: 8px;
+            background: linear-gradient(180deg, #8FBC8F 0%, #9ACD32 50%, #8FBC8F 100%);
+            display: block;
+            image-rendering: crisp-edges;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.2);
+        }
+
+        #gameOver {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        #gameOver h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        #gameOver button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        #gameOver button:hover {
+            background: #45a049;
+        }
+
+        #stats {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="header">
+            <h1>🌱 Plants vs Zombies 🧟</h1>
+            <div id="sunCount">
+                <span id="sunIcon"></span>
+                <span id="sunValue">200</span>
+            </div>
+        </div>
+
+        <div id="plantSelector">
+            <div class="plantCard peashooter" data-plant="peashooter" data-cost="100">
+                🌱 Peashooter<br>💰 100
+            </div>
+            <div class="plantCard freezeshooter" data-plant="freezeshooter" data-cost="175">
+                ❄️ Freeze<br>💰 175
+            </div>
+            <div class="plantCard snipershooter" data-plant="snipershooter" data-cost="200">
+                🎯 Sniper<br>💰 200
+            </div>
+            <div class="plantCard bombshooter" data-plant="bombshooter" data-cost="150">
+                💣 Bomber<br>💰 150
+            </div>
+            <div class="plantCard sunflower" data-plant="sunflower" data-cost="50">
+                🌻 Sunflower<br>💰 50
+            </div>
+            <div class="plantCard wallnut" data-plant="wallnut" data-cost="50">
+                🥜 Wall-nut<br>💰 50
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="900" height="500"></canvas>
+        
+        <div id="stats">
+            <strong>Instructions:</strong> Select a plant, then click on the lawn to place it. Defend against the zombies!
+            <br><strong>Plants:</strong> Peashooter (basic), Freeze (slows), Sniper (high damage), Bomber (splash), Sunflower (generates sun), Wall-nut (tank)
+        </div>
+    </div>
+
+    <div id="gameOver">
+        <h2 id="gameOverText">Game Over!</h2>
+        <p id="gameOverMessage"></p>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Load all character images
+        const peashooterImage = new Image();
+        peashooterImage.src = 'images/peashooter.png';
+        
+        const freezeShooterImage = new Image();
+        freezeShooterImage.src = 'images/freezeshooter.png';
+        
+        const sniperShooterImage = new Image();
+        sniperShooterImage.src = 'images/sniper.png';
+        
+        const bombShooterImage = new Image();
+        bombShooterImage.src = 'images/bomber.png';
+        
+        let imagesLoaded = 0;
+        const totalImages = 4;
+        
+        const onImageLoad = () => {
+            imagesLoaded++;
+            if (imagesLoaded === totalImages) {
+                console.log('All character images loaded!');
+            }
+        };
+        
+        peashooterImage.onload = onImageLoad;
+        freezeShooterImage.onload = onImageLoad;
+        sniperShooterImage.onload = onImageLoad;
+        bombShooterImage.onload = onImageLoad;
+        
+        // Game constants
+        const GRID_COLS = 9;
+        const GRID_ROWS = 5;
+        const CELL_WIDTH = canvas.width / GRID_COLS;
+        const CELL_HEIGHT = canvas.height / GRID_ROWS;
+        
+        // Game state
+        let sun = 200;  // Increased starting sun
+        let selectedPlant = null;
+        let gameRunning = true;
+        let zombiesKilled = 0;
+        
+        // Game objects
+        let plants = [];
+        let zombies = [];
+        let projectiles = [];
+        let suns = [];
+        
+        // Plant types config
+        const PLANT_TYPES = {
+            peashooter: {
+                cost: 100,
+                health: 150,
+                shootInterval: 1500,
+                damage: 20,
+                color: '#228B22',
+                emoji: '🌱',
+                projectileColor: '#00FF00',
+                image: peashooterImage,
+                name: 'Peashooter'
+            },
+            freezeshooter: {
+                cost: 175,
+                health: 150,
+                shootInterval: 2000,
+                damage: 10,
+                freezeDuration: 3000,
+                color: '#4169E1',
+                emoji: '❄️',
+                projectileColor: '#00BFFF',
+                image: freezeShooterImage,
+                name: 'Freeze Shooter'
+            },
+            snipershooter: {
+                cost: 200,
+                health: 100,
+                shootInterval: 3000,
+                damage: 100,
+                color: '#DC143C',
+                emoji: '🎯',
+                projectileColor: '#FF4500',
+                image: sniperShooterImage,
+                name: 'Sniper'
+            },
+            bombshooter: {
+                cost: 150,
+                health: 150,
+                shootInterval: 4000,
+                damage: 50,
+                splashRadius: 150,
+                color: '#FF8C00',
+                emoji: '💣',
+                projectileColor: '#FF6347',
+                image: bombShooterImage,
+                name: 'Bomb Shooter'
+            },
+            sunflower: {
+                cost: 50,
+                health: 150,
+                sunInterval: 5000,  // Faster sun generation (was 8000)
+                sunAmount: 50,      // More sun per generation (was 25)
+                color: '#FFD700',
+                emoji: '🌻',
+                name: 'Sunflower'
+            },
+            wallnut: {
+                cost: 50,
+                health: 600,  // Increased from 400
+                color: '#8B4513',
+                emoji: '🥜',
+                name: 'Wall-nut'
+            }
+        };
+        
+        // Zombie types
+        const ZOMBIE_TYPES = {
+            basic: {
+                health: 100,
+                speed: 0.2,  // Slower (was 0.3)
+                damage: 20,   // Less damage per bite (was 50)
+                attackSpeed: 1500,  // Slower attacks (was 1000)
+                emoji: '🧟'
+            },
+            cone: {
+                health: 200,
+                speed: 0.15,  // Slower (was 0.25)
+                damage: 20,   // Less damage per bite (was 50)
+                attackSpeed: 1500,  // Slower attacks (was 1000)
+                emoji: '🧟‍♂️'
+            }
+        };
+        
+        class Plant {
+            constructor(row, col, type) {
+                this.row = row;
+                this.col = col;
+                this.type = type;
+                this.health = PLANT_TYPES[type].health;
+                this.maxHealth = PLANT_TYPES[type].health;
+                this.lastAction = Date.now();
+            }
+            
+            update() {
+                const now = Date.now();
+                const config = PLANT_TYPES[this.type];
+                
+                // Shooting plants
+                if ((this.type === 'peashooter' || this.type === 'freezeshooter' || 
+                     this.type === 'snipershooter' || this.type === 'bombshooter') && 
+                    now - this.lastAction > config.shootInterval) {
+                    // Check if there's a zombie in this row
+                    const zombieInRow = zombies.some(z => Math.floor(z.row) === this.row && z.col > this.col);
+                    if (zombieInRow) {
+                        this.shoot();
+                        this.lastAction = now;
+                    }
+                }
+                
+                if (this.type === 'sunflower' && now - this.lastAction > config.sunInterval) {
+                    this.produceSun();
+                    this.lastAction = now;
+                }
+            }
+            
+            shoot() {
+                const config = PLANT_TYPES[this.type];
+                projectiles.push({
+                    row: this.row,
+                    x: (this.col + 0.5) * CELL_WIDTH,
+                    y: (this.row + 0.5) * CELL_HEIGHT,
+                    damage: config.damage,
+                    type: this.type,
+                    color: config.projectileColor,
+                    freezeDuration: config.freezeDuration,
+                    splashRadius: config.splashRadius
+                });
+            }
+            
+            produceSun() {
+                const config = PLANT_TYPES[this.type];
+                const sunAmount = config.sunAmount || 25;
+                suns.push({
+                    x: (this.col + 0.5) * CELL_WIDTH,
+                    y: (this.row + 0.5) * CELL_HEIGHT,
+                    value: sunAmount,
+                    lifetime: 8000,  // Longer lifetime (was 5000)
+                    created: Date.now()
+                });
+            }
+            
+            draw() {
+                const x = this.col * CELL_WIDTH;
+                const y = this.row * CELL_HEIGHT;
+                const config = PLANT_TYPES[this.type];
+                
+                // Draw shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.ellipse(x + CELL_WIDTH / 2, y + CELL_HEIGHT - 10, 30, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw plant background with gradient
+                const gradient = ctx.createRadialGradient(
+                    x + CELL_WIDTH / 2, y + CELL_HEIGHT / 2, 10,
+                    x + CELL_WIDTH / 2, y + CELL_HEIGHT / 2, CELL_WIDTH / 2.5
+                );
+                
+                if (this.type === 'peashooter') {
+                    gradient.addColorStop(0, '#3CB371');
+                    gradient.addColorStop(1, '#228B22');
+                } else if (this.type === 'freezeshooter') {
+                    gradient.addColorStop(0, '#87CEEB');
+                    gradient.addColorStop(1, '#4169E1');
+                } else if (this.type === 'snipershooter') {
+                    gradient.addColorStop(0, '#FFB6C1');
+                    gradient.addColorStop(1, '#DC143C');
+                } else if (this.type === 'bombshooter') {
+                    gradient.addColorStop(0, '#FFA500');
+                    gradient.addColorStop(1, '#FF4500');
+                } else if (this.type === 'sunflower') {
+                    gradient.addColorStop(0, '#FFD700');
+                    gradient.addColorStop(1, '#FFA500');
+                } else {
+                    gradient.addColorStop(0, '#A0522D');
+                    gradient.addColorStop(1, '#654321');
+                }
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.roundRect(x + 10, y + 10, CELL_WIDTH - 20, CELL_HEIGHT - 20, 10);
+                ctx.fill();
+                
+                // Add border/outline
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw image for shooters or emoji for others
+                const hasImage = (this.type === 'peashooter' || this.type === 'freezeshooter' || 
+                                 this.type === 'snipershooter' || this.type === 'bombshooter') && 
+                                 imagesLoaded >= 4;
+                
+                if (hasImage) {
+                    // Save context
+                    ctx.save();
+                    
+                    // Create circular clip for the image
+                    const imgSize = Math.min(CELL_WIDTH, CELL_HEIGHT) - 30;
+                    const imgX = x + CELL_WIDTH / 2;
+                    const imgY = y + CELL_HEIGHT / 2;
+                    
+                    ctx.beginPath();
+                    ctx.arc(imgX, imgY, imgSize / 2, 0, Math.PI * 2);
+                    ctx.clip();
+                    
+                    // Draw the image
+                    const plantImage = config.image;
+                    ctx.drawImage(
+                        plantImage,
+                        imgX - imgSize / 2,
+                        imgY - imgSize / 2,
+                        imgSize,
+                        imgSize
+                    );
+                    
+                    ctx.restore();
+                    
+                    // Add circular border around image with type-specific color
+                    ctx.strokeStyle = config.color;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(imgX, imgY, imgSize / 2, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else {
+                    // Draw emoji with shadow for other plants
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                    ctx.shadowBlur = 4;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+                    
+                    ctx.font = 'bold 45px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(config.emoji, x + CELL_WIDTH / 2, y + CELL_HEIGHT / 2);
+                    
+                    // Reset shadow
+                    ctx.shadowColor = 'transparent';
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                }
+                
+                // Draw health bar with border
+                const healthPercent = this.health / this.maxHealth;
+                const barWidth = CELL_WIDTH - 20;
+                const barHeight = 6;
+                const barX = x + 10;
+                const barY = y + CELL_HEIGHT - 18;
+                
+                // Health bar background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                
+                // Health bar
+                const healthGradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+                if (healthPercent > 0.5) {
+                    healthGradient.addColorStop(0, '#00FF00');
+                    healthGradient.addColorStop(1, '#32CD32');
+                } else if (healthPercent > 0.25) {
+                    healthGradient.addColorStop(0, '#FFD700');
+                    healthGradient.addColorStop(1, '#FFA500');
+                } else {
+                    healthGradient.addColorStop(0, '#FF4500');
+                    healthGradient.addColorStop(1, '#DC143C');
+                }
+                ctx.fillStyle = healthGradient;
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+                
+                // Health bar border
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+            }
+        }
+        
+        class Zombie {
+            constructor(row, type = 'basic') {
+                this.row = row;
+                this.col = GRID_COLS - 0.5;
+                this.type = type;
+                this.health = ZOMBIE_TYPES[type].health;
+                this.maxHealth = ZOMBIE_TYPES[type].health;
+                this.speed = ZOMBIE_TYPES[type].speed;
+                this.damage = ZOMBIE_TYPES[type].damage;
+                this.attackSpeed = ZOMBIE_TYPES[type].attackSpeed;
+                this.lastAttack = Date.now();
+                this.attacking = null;
+                this.frozen = false;
+                this.frozenUntil = 0;
+            }
+            
+            update() {
+                const now = Date.now();
+                
+                // Check if frozen
+                if (this.frozen && now < this.frozenUntil) {
+                    return; // Don't move or attack while frozen
+                } else if (this.frozen && now >= this.frozenUntil) {
+                    this.frozen = false;
+                }
+                
+                // Check for plants to attack
+                const plantInCell = plants.find(p => 
+                    p.row === Math.floor(this.row) && 
+                    Math.abs(p.col - Math.floor(this.col)) < 0.5
+                );
+                
+                if (plantInCell) {
+                    this.attacking = plantInCell;
+                    if (now - this.lastAttack > this.attackSpeed) {
+                        plantInCell.health -= this.damage;
+                        this.lastAttack = now;
+                        
+                        if (plantInCell.health <= 0) {
+                            plants = plants.filter(p => p !== plantInCell);
+                            this.attacking = null;
+                        }
+                    }
+                } else {
+                    this.attacking = null;
+                    this.col -= this.speed * 0.016; // Move left
+                }
+                
+                // Check if reached the left side
+                if (this.col < 0) {
+                    endGame(false);
+                }
+            }
+            
+            freeze(duration) {
+                this.frozen = true;
+                this.frozenUntil = Date.now() + duration;
+            }
+            
+            draw() {
+                const x = this.col * CELL_WIDTH;
+                const y = this.row * CELL_HEIGHT;
+                
+                // Draw shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(x, y + CELL_HEIGHT - 8, 25, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw zombie body with gradient
+                const bodyGradient = ctx.createLinearGradient(x - 20, 0, x + 20, 0);
+                if (this.frozen) {
+                    bodyGradient.addColorStop(0, '#87CEEB');
+                    bodyGradient.addColorStop(1, '#4682B4');
+                } else if (this.attacking) {
+                    bodyGradient.addColorStop(0, '#9932CC');
+                    bodyGradient.addColorStop(1, '#8B008B');
+                } else {
+                    bodyGradient.addColorStop(0, '#6B8E23');
+                    bodyGradient.addColorStop(1, '#556B2F');
+                }
+                
+                ctx.fillStyle = bodyGradient;
+                ctx.beginPath();
+                ctx.roundRect(x - 22, y + 15, 44, CELL_HEIGHT - 30, 8);
+                ctx.fill();
+                
+                // Add border
+                ctx.strokeStyle = this.frozen ? '#00BFFF' : 'rgba(0, 0, 0, 0.5)';
+                ctx.lineWidth = this.frozen ? 3 : 2;
+                ctx.stroke();
+                
+                // Draw emoji with shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                ctx.shadowBlur = 5;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                
+                ctx.font = 'bold 50px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(ZOMBIE_TYPES[this.type].emoji, x, y + CELL_HEIGHT / 2);
+                
+                // Draw ice effect if frozen
+                if (this.frozen) {
+                    ctx.fillText('❄️', x, y + CELL_HEIGHT / 2 - 20);
+                }
+                
+                // Reset shadow
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                
+                // Draw health bar
+                const healthPercent = this.health / this.maxHealth;
+                const barWidth = 44;
+                const barHeight = 6;
+                const barX = x - 22;
+                const barY = y + 8;
+                
+                // Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                
+                // Health
+                const healthGradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+                healthGradient.addColorStop(0, '#FF6347');
+                healthGradient.addColorStop(1, '#DC143C');
+                ctx.fillStyle = healthGradient;
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+                
+                // Border
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+            }
+        }
+        
+        function updateProjectiles() {
+            projectiles.forEach((proj, index) => {
+                proj.x += 5;
+                
+                // Check collision with zombies
+                const hitZombie = zombies.find(z => {
+                    const zx = z.col * CELL_WIDTH;
+                    const zy = z.row * CELL_HEIGHT + CELL_HEIGHT / 2;
+                    return Math.floor(z.row) === proj.row && 
+                           Math.abs(proj.x - zx) < 30 && 
+                           Math.abs(proj.y - zy) < 40;
+                });
+                
+                if (hitZombie) {
+                    // Apply damage
+                    hitZombie.health -= proj.damage;
+                    
+                    // Apply special effects
+                    if (proj.type === 'freezeshooter' && proj.freezeDuration) {
+                        hitZombie.freeze(proj.freezeDuration);
+                    }
+                    
+                    // Splash damage for bomb shooter
+                    if (proj.type === 'bombshooter' && proj.splashRadius) {
+                        zombies.forEach(z => {
+                            const zx = z.col * CELL_WIDTH;
+                            const zy = (z.row + 0.5) * CELL_HEIGHT;
+                            const dist = Math.sqrt((proj.x - zx) ** 2 + (proj.y - zy) ** 2);
+                            if (dist < proj.splashRadius && z !== hitZombie) {
+                                z.health -= proj.damage * 0.5; // Half damage to nearby
+                            }
+                        });
+                    }
+                    
+                    // Remove dead zombies
+                    zombies = zombies.filter(z => {
+                        if (z.health <= 0) {
+                            zombiesKilled++;
+                            return false;
+                        }
+                        return true;
+                    });
+                    
+                    projectiles.splice(index, 1);
+                }
+                
+                // Remove if off screen
+                if (proj.x > canvas.width) {
+                    projectiles.splice(index, 1);
+                }
+            });
+        }
+        
+        function drawProjectiles() {
+            projectiles.forEach(proj => {
+                const color = proj.color || '#00FF00';
+                
+                // Draw glow
+                const glowGradient = ctx.createRadialGradient(proj.x, proj.y, 0, proj.x, proj.y, 15);
+                glowGradient.addColorStop(0, color + '99');
+                glowGradient.addColorStop(1, color + '00');
+                ctx.fillStyle = glowGradient;
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, 15, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw projectile with gradient
+                const projGradient = ctx.createRadialGradient(proj.x - 2, proj.y - 2, 2, proj.x, proj.y, 10);
+                
+                if (proj.type === 'freezeshooter') {
+                    projGradient.addColorStop(0, '#E0FFFF');
+                    projGradient.addColorStop(0.5, '#00BFFF');
+                    projGradient.addColorStop(1, '#4169E1');
+                } else if (proj.type === 'snipershooter') {
+                    projGradient.addColorStop(0, '#FFD700');
+                    projGradient.addColorStop(0.5, '#FF4500');
+                    projGradient.addColorStop(1, '#DC143C');
+                } else if (proj.type === 'bombshooter') {
+                    projGradient.addColorStop(0, '#FFA500');
+                    projGradient.addColorStop(0.5, '#FF6347');
+                    projGradient.addColorStop(1, '#FF4500');
+                } else {
+                    projGradient.addColorStop(0, '#90EE90');
+                    projGradient.addColorStop(0.5, '#00FF00');
+                    projGradient.addColorStop(1, '#32CD32');
+                }
+                
+                ctx.fillStyle = projGradient;
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add shine
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(proj.x - 3, proj.y - 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Border
+                ctx.strokeStyle = proj.type === 'freezeshooter' ? '#4169E1' : 
+                                 proj.type === 'snipershooter' ? '#DC143C' :
+                                 proj.type === 'bombshooter' ? '#FF4500' : 'rgba(0, 100, 0, 0.8)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(proj.x, proj.y, 10, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+        
+        function updateSuns() {
+            const now = Date.now();
+            suns = suns.filter(s => now - s.created < s.lifetime);
+        }
+        
+        function drawSuns() {
+            const now = Date.now();
+            suns.forEach(s => {
+                const age = now - s.created;
+                const opacity = 1 - (age / s.lifetime) * 0.5;
+                const pulse = Math.sin(age * 0.005) * 0.1 + 0.9;
+                
+                ctx.save();
+                ctx.globalAlpha = opacity;
+                
+                // Draw outer glow
+                const outerGlow = ctx.createRadialGradient(s.x, s.y, 5, s.x, s.y, 25);
+                outerGlow.addColorStop(0, 'rgba(255, 215, 0, 0.8)');
+                outerGlow.addColorStop(0.5, 'rgba(255, 215, 0, 0.4)');
+                outerGlow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                ctx.fillStyle = outerGlow;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, 25 * pulse, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw sun with gradient
+                const sunGradient = ctx.createRadialGradient(s.x - 3, s.y - 3, 2, s.x, s.y, 15);
+                sunGradient.addColorStop(0, '#FFFFE0');
+                sunGradient.addColorStop(0.3, '#FFD700');
+                sunGradient.addColorStop(1, '#FFA500');
+                
+                ctx.fillStyle = sunGradient;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, 15, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw sun rays
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i * Math.PI * 2) / 8 + age * 0.001;
+                    const x1 = s.x + Math.cos(angle) * 15;
+                    const y1 = s.y + Math.sin(angle) * 15;
+                    const x2 = s.x + Math.cos(angle) * 22;
+                    const y2 = s.y + Math.sin(angle) * 22;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+                
+                // Add border
+                ctx.strokeStyle = 'rgba(218, 165, 32, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, 15, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Draw value
+                ctx.fillStyle = '#8B4513';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(s.value, s.x, s.y);
+                
+                ctx.restore();
+            });
+        }
+        
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.lineWidth = 2;
+            
+            // Draw alternating row colors for depth
+            for (let row = 0; row < GRID_ROWS; row++) {
+                if (row % 2 === 0) {
+                    ctx.fillStyle = 'rgba(139, 188, 79, 0.15)';
+                    ctx.fillRect(0, row * CELL_HEIGHT, canvas.width, CELL_HEIGHT);
+                }
+            }
+            
+            for (let row = 0; row <= GRID_ROWS; row++) {
+                ctx.beginPath();
+                ctx.moveTo(0, row * CELL_HEIGHT);
+                ctx.lineTo(canvas.width, row * CELL_HEIGHT);
+                ctx.stroke();
+            }
+            
+            for (let col = 0; col <= GRID_COLS; col++) {
+                ctx.beginPath();
+                ctx.moveTo(col * CELL_WIDTH, 0);
+                ctx.lineTo(col * CELL_WIDTH, canvas.height);
+                ctx.stroke();
+            }
+        }
+        
+        function spawnZombie() {
+            if (!gameRunning) return;
+            
+            const row = Math.floor(Math.random() * GRID_ROWS);
+            const type = Math.random() > 0.7 ? 'cone' : 'basic';
+            zombies.push(new Zombie(row, type));
+            
+            // Spawn next zombie
+            const delay = Math.max(3000, 10000 - zombiesKilled * 100);
+            setTimeout(spawnZombie, delay);
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Clear canvas with gradient background
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, '#8FBC8F');
+            bgGradient.addColorStop(0.5, '#9ACD32');
+            bgGradient.addColorStop(1, '#8FBC8F');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawGrid();
+            
+            // Update and draw
+            plants.forEach(p => p.update());
+            zombies.forEach(z => z.update());
+            updateProjectiles();
+            updateSuns();
+            
+            plants.forEach(p => p.draw());
+            zombies.forEach(z => z.draw());
+            drawProjectiles();
+            drawSuns();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function endGame(won) {
+            gameRunning = false;
+            const gameOverDiv = document.getElementById('gameOver');
+            const gameOverText = document.getElementById('gameOverText');
+            const gameOverMessage = document.getElementById('gameOverMessage');
+            
+            if (won) {
+                gameOverText.textContent = '🎉 Victory! 🎉';
+                gameOverMessage.textContent = `You survived and killed ${zombiesKilled} zombies!`;
+            } else {
+                gameOverText.textContent = '💀 Game Over 💀';
+                gameOverMessage.textContent = `The zombies ate your brains! You killed ${zombiesKilled} zombies.`;
+            }
+            
+            gameOverDiv.style.display = 'block';
+        }
+        
+        function restartGame() {
+            location.reload();
+        }
+        
+        // Canvas click handler
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Check if clicking on a sun
+            for (let i = suns.length - 1; i >= 0; i--) {
+                const s = suns[i];
+                const dist = Math.sqrt((x - s.x) ** 2 + (y - s.y) ** 2);
+                if (dist < 20) {
+                    sun += s.value;
+                    updateSunDisplay();
+                    suns.splice(i, 1);
+                    return;
+                }
+            }
+            
+            // Plant placement
+            if (selectedPlant) {
+                const col = Math.floor(x / CELL_WIDTH);
+                const row = Math.floor(y / CELL_HEIGHT);
+                
+                if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+                    const plantConfig = PLANT_TYPES[selectedPlant];
+                    const occupied = plants.some(p => p.row === row && p.col === col);
+                    
+                    if (!occupied && sun >= plantConfig.cost) {
+                        plants.push(new Plant(row, col, selectedPlant));
+                        sun -= plantConfig.cost;
+                        updateSunDisplay();
+                    }
+                }
+            }
+        });
+        
+        // Plant selector
+        document.querySelectorAll('.plantCard').forEach(card => {
+            card.addEventListener('click', () => {
+                const plantType = card.dataset.plant;
+                const cost = parseInt(card.dataset.cost);
+                
+                if (sun >= cost) {
+                    document.querySelectorAll('.plantCard').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedPlant = plantType;
+                } else {
+                    selectedPlant = null;
+                }
+            });
+        });
+        
+        function updateSunDisplay() {
+            document.getElementById('sunValue').textContent = sun;
+            
+            // Update plant card states
+            document.querySelectorAll('.plantCard').forEach(card => {
+                const cost = parseInt(card.dataset.cost);
+                if (sun < cost) {
+                    card.classList.add('disabled');
+                } else {
+                    card.classList.remove('disabled');
+                }
+            });
+        }
+        
+        // Sun generation
+        setInterval(() => {
+            if (gameRunning) {
+                sun += 25;
+                updateSunDisplay();
+            }
+        }, 8000);  // Every 8 seconds (was 10 seconds)
+        
+        // Start game
+        updateSunDisplay();
+        gameLoop();
+        setTimeout(spawnZombie, 5000);
+        
+        console.log('🌱 Plants vs Zombies loaded! Good luck!');
+    </script>
+</body>
+</html>
